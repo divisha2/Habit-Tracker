@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Flame, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { getRandomQuote } from '../utils/motivationalQuotes';
+import ApiService from '../services/api';
 
 const SignIn = () => {
   const navigate = useNavigate();
@@ -41,22 +42,10 @@ const SignIn = () => {
 
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:8080/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          email: formData.email,
-          password: formData.password
-        })
+      const data = await ApiService.login({
+        email: formData.email,
+        password: formData.password
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Login failed');
-      }
 
       // Use AuthContext login method
       login(data.token, data.user);

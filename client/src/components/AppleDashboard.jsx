@@ -9,9 +9,7 @@ import AddHabitModal from './AddHabitModal';
 import { getRandomQuote } from '../utils/motivationalQuotes';
 import { subDays, format } from 'date-fns';
 import { useAuth } from '../contexts/AuthContext';
-import api from '../services/api';
-
-const API_BASE_URL = 'http://localhost:8080/api';
+import ApiService from '../services/api';
 
 const generateAnalytics = () => {
   // Return empty analytics for new users
@@ -41,22 +39,8 @@ const AppleDashboard = () => {
   const loadHabits = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
-      
-      const response = await fetch(`${API_BASE_URL}/habits`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setHabits(data.data || []);
-      } else {
-        // Fallback to mock data if API fails
-        setHabits([]);
-      }
+      const data = await ApiService.getHabits();
+      setHabits(data.data || []);
     } catch (err) {
       console.error('Failed to load habits:', err);
       setError('Failed to load habits');
@@ -68,21 +52,8 @@ const AppleDashboard = () => {
 
   const loadAnalytics = async () => {
     try {
-      const token = localStorage.getItem('token');
-      
-      const response = await fetch(`${API_BASE_URL}/stats/dashboard`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setAnalytics(data.data || generateAnalytics());
-      } else {
-        setAnalytics(generateAnalytics());
-      }
+      const data = await ApiService.getDashboardStats();
+      setAnalytics(data.data || generateAnalytics());
     } catch (err) {
       console.error('Failed to load analytics:', err);
       setAnalytics(generateAnalytics());
@@ -99,30 +70,17 @@ const AppleDashboard = () => {
 
   const handleToggle = async (habitId) => {
     try {
-      const token = localStorage.getItem('token');
+      await ApiService.toggleHabitCompletion(habitId);
       
-      const response = await fetch(`${API_BASE_URL}/logs/toggle`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ habitId })
-      });
+      // Update local state optimistically
+      setHabits(prev => prev.map(habit => 
+        habit._id === habitId 
+          ? { ...habit, completedToday: !habit.completedToday }
+          : habit
+      ));
       
-      if (response.ok) {
-        // Update local state optimistically
-        setHabits(prev => prev.map(habit => 
-          habit._id === habitId 
-            ? { ...habit, completedToday: !habit.completedToday }
-            : habit
-        ));
-        
-        // Reload analytics to reflect changes
-        loadAnalytics();
-      } else {
-        console.error('Failed to toggle habit');
-      }
+      // Reload analytics to reflect changes
+      loadAnalytics();
     } catch (err) {
       console.error('Error toggling habit:', err);
     }
@@ -130,21 +88,8 @@ const AppleDashboard = () => {
 
   const handleDelete = async (habitId) => {
     try {
-      const token = localStorage.getItem('token');
-      
-      const response = await fetch(`${API_BASE_URL}/habits/${habitId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (response.ok) {
-        setHabits(prev => prev.filter(h => h._id !== habitId));
-      } else {
-        console.error('Failed to delete habit');
-      }
+      await ApiService.deleteHabit(habitId);
+      setHabits(prev => prev.filter(h => h._id !== habitId));
     } catch (err) {
       console.error('Error deleting habit:', err);
     }
@@ -157,25 +102,11 @@ const AppleDashboard = () => {
 
   const handleSaveEdit = async (habitId) => {
     try {
-      const token = localStorage.getItem('token');
-      
-      const response = await fetch(`${API_BASE_URL}/habits/${habitId}`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ name: editName })
-      });
-      
-      if (response.ok) {
-        setHabits(prev => prev.map(h =>
-          h._id === habitId ? { ...h, name: editName } : h
-        ));
-        setEditingId(null);
-      } else {
-        console.error('Failed to update habit');
-      }
+      await ApiService.updateHabit(habitId, { name: editName });
+      setHabits(prev => prev.map(h =>
+        h._id === habitId ? { ...h, name: editName } : h
+      ));
+      setEditingId(null);
     } catch (err) {
       console.error('Error updating habit:', err);
     }
@@ -183,23 +114,8 @@ const AppleDashboard = () => {
 
   const handleCreateHabit = async (habitData) => {
     try {
-      const token = localStorage.getItem('token');
-      
-      const response = await fetch(`${API_BASE_URL}/habits`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(habitData)
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setHabits(prev => [...prev, data.data]);
-      } else {
-        console.error('Failed to create habit');
-      }
+      const data = await ApiService.createHabit(habitData);
+      setHabits(prev => [...prev, data.data]);
     } catch (err) {
       console.error('Error creating habit:', err);
     }

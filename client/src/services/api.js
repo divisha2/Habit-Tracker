@@ -1,8 +1,8 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 class ApiService {
   async request(endpoint, options = {}) {
-    const url = `${API_BASE_URL}${endpoint}`;
+    const url = `${API_BASE_URL}/api${endpoint}`;
     const token = localStorage.getItem('token');
     
     const config = {
@@ -26,6 +26,25 @@ class ApiService {
       console.error(`API Error (${endpoint}):`, error);
       throw error;
     }
+  }
+
+  // Auth API
+  async register(userData) {
+    return this.request('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify(userData),
+    });
+  }
+
+  async login(credentials) {
+    return this.request('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify(credentials),
+    });
+  }
+
+  async getCurrentUser() {
+    return this.request('/auth/me');
   }
 
   // Habits API
@@ -77,7 +96,7 @@ class ApiService {
 
   // Health check
   async healthCheck() {
-    const response = await fetch('http://localhost:8080/health');
+    const response = await fetch(`${API_BASE_URL}/health`);
     return response.json();
   }
 }

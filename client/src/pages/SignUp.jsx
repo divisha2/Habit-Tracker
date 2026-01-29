@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Flame, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { getRandomQuote } from '../utils/motivationalQuotes';
+import ApiService from '../services/api';
 
 const SignUp = () => {
   const navigate = useNavigate();
@@ -52,24 +53,12 @@ const SignUp = () => {
 
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:8080/api/auth/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          name: formData.name,
-          email: formData.email,
-          password: formData.password,
-          confirmPassword: formData.confirmPassword
-        })
+      const data = await ApiService.register({
+        name: formData.name,
+        email: formData.email,
+        password: formData.password,
+        confirmPassword: formData.confirmPassword
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Registration failed');
-      }
 
       // Use AuthContext login method
       login(data.token, data.user);
