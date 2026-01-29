@@ -52,7 +52,6 @@ const connectDB = async () => {
         console.log(`📊 Database: ${conn.connection.name}`);
         console.log(`🔌 Ready State: ${conn.connection.readyState}`);
         
-        process.env.MONGODB_CONNECTED = 'true';
         connected = true;
         
         // Test the connection with a simple operation
@@ -62,17 +61,14 @@ const connectDB = async () => {
         // Set up connection event handlers
         mongoose.connection.on('error', (err) => {
           console.error('❌ MongoDB connection error:', err.message);
-          process.env.MONGODB_CONNECTED = 'false';
         });
 
         mongoose.connection.on('disconnected', () => {
           console.log('⚠️ MongoDB disconnected');
-          process.env.MONGODB_CONNECTED = 'false';
         });
 
         mongoose.connection.on('reconnected', () => {
           console.log('✅ MongoDB reconnected');
-          process.env.MONGODB_CONNECTED = 'true';
         });
 
         // Graceful shutdown
@@ -106,14 +102,12 @@ const connectDB = async () => {
       console.error('   2. Verify MongoDB Atlas credentials');
       console.error('   3. Ensure IP address is whitelisted (0.0.0.0/0)');
       console.error('   4. Check if the cluster is running');
-      console.log('⚠️ Server will continue with in-memory database');
-      process.env.MONGODB_CONNECTED = 'false';
+      throw new Error('MongoDB connection failed - application cannot start without database');
     }
 
   } catch (error) {
     console.error('❌ Database connection setup failed:', error.message);
-    console.log('⚠️ Server will continue with in-memory database');
-    process.env.MONGODB_CONNECTED = 'false';
+    throw error; // Re-throw to prevent server from starting without database
   }
 };
 

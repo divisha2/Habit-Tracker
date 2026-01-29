@@ -1,12 +1,6 @@
 import User from '../models/User.js';
 import jwt from 'jsonwebtoken';
 import bcryptjs from 'bcryptjs';
-import memoryDB from '../utils/memoryDB.js';
-
-// Check if MongoDB is connected
-const isMongoConnected = () => {
-  return process.env.MONGODB_CONNECTED === 'true';
-};
 
 // Generate JWT Token
 const generateToken = (id) => {
@@ -44,54 +38,30 @@ export const register = async (req, res) => {
       });
     }
 
-    let user;
-    let existingUser;
-
-    if (isMongoConnected()) {
-      // Use MongoDB
-      existingUser = await User.findOne({ email });
-      if (existingUser) {
-        return res.status(400).json({
-          success: false,
-          message: 'Email already registered'
-        });
-      }
-
-      user = await User.create({
-        name,
-        email,
-        password
-      });
-    } else {
-      // Use memory database
-      existingUser = memoryDB.findUserByEmail(email);
-      if (existingUser) {
-        return res.status(400).json({
-          success: false,
-          message: 'Email already registered'
-        });
-      }
-
-      // Hash password manually for memory DB
-      const salt = await bcryptjs.genSalt(10);
-      const hashedPassword = await bcryptjs.hash(password, salt);
-
-      user = memoryDB.createUser({
-        name,
-        email,
-        password: hashedPassword
+    // Use MongoDB
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email already registered'
       });
     }
 
+    const user = await User.create({
+      name,
+      email,
+      password
+    });
+
     // Generate token
-    const token = generateToken(user._id || user.id);
+    const token = generateToken(user._id);
 
     res.status(201).json({
       success: true,
       message: 'User registered successfully',
       token,
       user: {
-        id: user._id || user.id,
+        id: user._id,
         name: user.name,
         email: user.email
       }
@@ -120,32 +90,16 @@ export const login = async (req, res) => {
       });
     }
 
-    let user;
-    let isMatch = false;
-
-    if (isMongoConnected()) {
-      // Use MongoDB
-      user = await User.findOne({ email }).select('+password');
-      if (!user) {
-        return res.status(401).json({
-          success: false,
-          message: 'Invalid credentials'
-        });
-      }
-
-      isMatch = await user.matchPassword(password);
-    } else {
-      // Use memory database
-      user = memoryDB.findUserByEmail(email);
-      if (!user) {
-        return res.status(401).json({
-          success: false,
-          message: 'Invalid credentials'
-        });
-      }
-
-      isMatch = await bcryptjs.compare(password, user.password);
+    // Use MongoDB
+    const user = await User.findOne({ email }).select('+password');
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid credentials'
+      });
     }
+
+    const isMatch = await user.matchPassword(password);
 
     if (!isMatch) {
       return res.status(401).json({
@@ -155,14 +109,14 @@ export const login = async (req, res) => {
     }
 
     // Generate token
-    const token = generateToken(user._id || user.id);
+    const token = generateToken(user._id);
 
     res.status(200).json({
       success: true,
       message: 'Login successful',
       token,
       user: {
-        id: user._id || user.id,
+        id: user._id,
         name: user.name,
         email: user.email
       }
@@ -181,13 +135,7 @@ export const login = async (req, res) => {
 // @access  Private
 export const getCurrentUser = async (req, res) => {
   try {
-    let user;
-
-    if (isMongoConnected()) {
-      user = await User.findById(req.user.id);
-    } else {
-      user = memoryDB.findUserById(req.user.id);
-    }
+    const user = await User.findById(req.user.id);
 
     if (!user) {
       return res.status(404).json({
@@ -199,7 +147,7 @@ export const getCurrentUser = async (req, res) => {
     res.status(200).json({
       success: true,
       user: {
-        id: user._id || user.id,
+        id: user._id,
         name: user.name,
         email: user.email
       }
