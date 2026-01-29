@@ -1,0 +1,360 @@
+import React, { useState, useEffect } from 'react';
+import { Plus, Edit2, Trash2, Check, X } from 'lucide-react';
+import Navbar from './Navbar';
+import HeatmapCalendar from './HeatmapCalendar';
+import StreakCalendar from './StreakCalendar';
+import HabitsList from './HabitsList';
+import TrendChart from './TrendChart';
+import AddHabitModal from './AddHabitModal';
+import { getRandomQuote } from '../utils/motivationalQuotes';
+import { subDays, format } from 'date-fns';
+import { useAuth } from '../contexts/AuthContext';
+import api from '../services/api';
+
+const API_BASE_URL = 'http://localhost:8080/api';
+
+const generateAnalytics = () => {
+  // Return empty analytics for new users
+  return {
+    heatmapData: [],
+    weeklyTrend: []
+  };
+};
+
+const AppleDashboard = () => {
+  const { user } = useAuth();
+  const [habits, setHabits] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [showAddHabit, setShowAddHabit] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [editName, setEditName] = useState('');
+  const [currentQuote] = useState(getRandomQuote());
+  const [analytics, setAnalytics] = useState({ heatmapData: [], weeklyTrend: [] });
+
+  // Load habits on component mount
+  useEffect(() => {
+    loadHabits();
+    loadAnalytics();
+  }, []);
+
+  const loadHabits = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('token');
+      
+      const response = await fetch(`${API_BASE_URL}/habits`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setHabits(data.data || []);
+      } else {
+        // Fallback to mock data if API fails
+        setHabits([]);
+      }
+    } catch (err) {
+      console.error('Failed to load habits:', err);
+      setError('Failed to load habits');
+      setHabits([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadAnalytics = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      
+      const response = await fetch(`${API_BASE_URL}/stats/dashboard`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setAnalytics(data.data || generateAnalytics());
+      } else {
+        setAnalytics(generateAnalytics());
+      }
+    } catch (err) {
+      console.error('Failed to load analytics:', err);
+      setAnalytics(generateAnalytics());
+    }
+  };
+
+  const completedToday = habits.filter(h => h.completedToday).length;
+  const totalHabits = habits.length;
+  const percentage = totalHabits > 0 ? Math.round((completedToday / totalHabits) * 100) : 0;
+
+  const handleAddHabitClick = () => {
+    setShowAddHabit(true);
+  };
+
+  const handleToggle = async (habitId) => {
+    try {
+      const token = localStorage.getItem('token');
+      
+      const response = await fetch(`${API_BASE_URL}/logs/toggle`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ habitId })
+      });
+      
+      if (response.ok) {
+        // Update local state optimistically
+        setHabits(prev => prev.map(habit => 
+          habit._id === habitId 
+            ? { ...habit, completedToday: !habit.completedToday }
+            : habit
+        ));
+        
+        // Reload analytics to reflect changes
+        loadAnalytics();
+      } else {
+        console.error('Failed to toggle habit');
+      }
+    } catch (err) {
+      console.error('Error toggling habit:', err);
+    }
+  };
+
+  const handleDelete = async (habitId) => {
+    try {
+      const token = localStorage.getItem('token');
+      
+      const response = await fetch(`${API_BASE_URL}/habits/${habitId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        setHabits(prev => prev.filter(h => h._id !== habitId));
+      } else {
+        console.error('Failed to delete habit');
+      }
+    } catch (err) {
+      console.error('Error deleting habit:', err);
+    }
+  };
+
+  const handleEdit = (habitId, currentName) => {
+    setEditingId(habitId);
+    setEditName(currentName);
+  };
+
+  const handleSaveEdit = async (habitId) => {
+    try {
+      const token = localStorage.getItem('token');
+      
+      const response = await fetch(`${API_BASE_URL}/habits/${habitId}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ name: editName })
+      });
+      
+      if (response.ok) {
+        setHabits(prev => prev.map(h =>
+          h._id === habitId ? { ...h, name: editName } : h
+        ));
+        setEditingId(null);
+      } else {
+        console.error('Failed to update habit');
+      }
+    } catch (err) {
+      console.error('Error updating habit:', err);
+    }
+  };
+
+  const handleCreateHabit = async (habitData) => {
+    try {
+      const token = localStorage.getItem('token');
+      
+      const response = await fetch(`${API_BASE_URL}/habits`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(habitData)
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setHabits(prev => [...prev, data.data]);
+      } else {
+        console.error('Failed to create habit');
+      }
+    } catch (err) {
+      console.error('Error creating habit:', err);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-white">
+      <Navbar />
+      
+      {/* Main Container with margins */}
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+        
+        {/* Header Section */}
+        <div className="mb-12">
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6 mb-8">
+            <div>
+              <h2 className="text-5xl sm:text-6xl font-bold text-secondary font-display mb-2">
+                Today's Journey
+              </h2>
+              <p className="text-lg sm:text-xl text-muted">
+                {new Date().toLocaleDateString('en-US', { 
+                  weekday: 'long', 
+                  month: 'long', 
+                  day: 'numeric' 
+                })}
+              </p>
+            </div>
+            <button
+              onClick={handleAddHabitClick}
+              className="bg-primary hover:bg-opacity-90 text-white px-8 py-3.5 rounded-lg font-semibold flex items-center gap-2 transition-all duration-200 self-start sm:self-auto text-lg"
+            >
+              <Plus className="w-6 h-6" />
+              Add Habit
+            </button>
+          </div>
+
+          {/* Motivational Quote */}
+          <div className="border-l-4 border-primary pl-6 py-5 bg-accent/20 rounded-r-xl">
+            <p className="text-secondary italic text-lg sm:text-xl font-medium leading-relaxed">
+              "{currentQuote.text}"
+            </p>
+            <p className="text-muted text-sm sm:text-base mt-3">
+              — {currentQuote.author}
+            </p>
+          </div>
+        </div>
+
+        {/* Main Content Grid - Improved Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          {/* Habits List - Fixed Height Card */}
+          <div className="border border-gray-200 rounded-2xl p-6 bg-white shadow-sm hover:shadow-md transition-shadow h-96">
+            <HabitsList
+              habits={habits}
+              editingId={editingId}
+              editName={editName}
+              onToggle={handleToggle}
+              onEdit={handleEdit}
+              onSaveEdit={handleSaveEdit}
+              onDelete={handleDelete}
+              onEditNameChange={setEditName}
+            />
+          </div>
+
+          {/* Progress Overview */}
+          <div className="border border-gray-200 rounded-2xl p-6 bg-white shadow-sm hover:shadow-md transition-shadow">
+            <div className="space-y-6">
+              <div>
+                <h4 className="text-lg font-semibold text-secondary mb-3">
+                  Today's Progress
+                </h4>
+                <div className="text-5xl font-bold text-primary mb-4">
+                  {percentage}%
+                </div>
+                <div className="h-4 bg-gray-200 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-primary transition-all duration-700 rounded-full"
+                    style={{ width: `${percentage}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Progress Stats */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="text-center p-4 bg-accent/20 rounded-xl">
+                  <p className="text-xs text-muted font-medium mb-2">Completed</p>
+                  <p className="text-3xl font-bold text-primary">{completedToday}</p>
+                </div>
+                <div className="text-center p-4 bg-accent/20 rounded-xl">
+                  <p className="text-xs text-muted font-medium mb-2">Remaining</p>
+                  <p className="text-3xl font-bold text-secondary">{totalHabits - completedToday}</p>
+                </div>
+                <div className="text-center p-4 bg-accent/20 rounded-xl">
+                  <p className="text-xs text-muted font-medium mb-2">Total</p>
+                  <p className="text-3xl font-bold text-secondary">{totalHabits}</p>
+                </div>
+              </div>
+
+              {/* Motivational Message */}
+              <div className="text-center p-4 bg-primary/5 rounded-xl">
+                <p className="text-sm text-secondary font-medium">
+                  {percentage === 100 ? "🎉 Perfect day!" : 
+                   percentage >= 80 ? "🔥 Almost there!" :
+                   percentage >= 50 ? "💪 Keep going!" :
+                   "🌱 Every step counts!"}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Streak Calendar */}
+          <div className="border border-gray-200 rounded-2xl p-6 bg-white shadow-sm hover:shadow-md transition-shadow">
+            <StreakCalendar habits={habits} />
+          </div>
+        </div>
+
+        {/* Analytics Grid - Larger and More Spaced */}
+        <div id="analytics" className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+          <div className="border border-gray-200 rounded-2xl p-8 bg-white shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between mb-6">
+              <h4 className="text-2xl font-bold text-secondary font-display">
+                Activity Heatmap
+              </h4>
+              <div className="text-xs text-muted bg-accent/20 px-3 py-1 rounded-full">
+                Last 6 months
+              </div>
+            </div>
+            <div className="h-56">
+              <HeatmapCalendar data={analytics.heatmapData} />
+            </div>
+          </div>
+          
+          <div className="border border-gray-200 rounded-2xl p-8 bg-white shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between mb-6">
+              <h4 className="text-2xl font-bold text-secondary font-display">
+                30-Day Trend
+              </h4>
+              <div className="text-xs text-muted bg-accent/20 px-3 py-1 rounded-full">
+                Consistency %
+              </div>
+            </div>
+            <div className="h-56">
+              <TrendChart data={analytics.weeklyTrend} type="area" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Add Habit Modal */}
+      <AddHabitModal
+        isOpen={showAddHabit}
+        onClose={() => setShowAddHabit(false)}
+        onSave={handleCreateHabit}
+      />
+    </div>
+  );
+};
+
+export default AppleDashboard;
