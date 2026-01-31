@@ -15,7 +15,26 @@ class ApiService {
 
     try {
       const response = await fetch(url, config);
-      const data = await response.json();
+      
+      // Check if response has content
+      const contentType = response.headers.get('content-type');
+      let data;
+      
+      if (contentType && contentType.includes('application/json')) {
+        data = await response.json();
+      } else {
+        // Handle non-JSON responses
+        const text = await response.text();
+        if (text) {
+          try {
+            data = JSON.parse(text);
+          } catch {
+            data = { message: text };
+          }
+        } else {
+          data = { message: 'No response data' };
+        }
+      }
 
       if (!response.ok) {
         throw new Error(data.message || data.error || `HTTP error! status: ${response.status}`);
@@ -83,6 +102,10 @@ class ApiService {
   async getHabitLogs(habitId, params = {}) {
     const queryString = new URLSearchParams(params).toString();
     return this.request(`/logs/habit/${habitId}?${queryString}`);
+  }
+
+  async getLogsByDate(date) {
+    return this.request(`/logs/date/${date}`);
   }
 
   // Stats API (for Recharts)

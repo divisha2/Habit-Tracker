@@ -42,11 +42,11 @@ const HeatmapCalendar = ({ data = [], className = '' }) => {
             to={format(today, 'yyyy-MM-dd')}
             emptyColor="#F5E6D3"
             colors={[
-              '#ffcbdeff',
-              '#ffabd5ff',
-              '#e46cb4ff',
-              '#ed459fff',
-              '#ff3797ff'
+              '#dbeafe',
+              '#bfdbfe', 
+              '#93c5fd',
+              '#60a5fa',
+              '#3b82f6'
             ]}
             margin={{ top: 10, right: 10, bottom: 10, left: 10 }}
             yearSpacing={40}

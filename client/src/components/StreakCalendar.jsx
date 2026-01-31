@@ -1,7 +1,11 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, subDays, startOfWeek, endOfWeek } from 'date-fns';
+import ApiService from '../services/api';
 
 const StreakCalendar = ({ habits = [] }) => {
+  const [streakData, setStreakData] = useState({});
+  const [loading, setLoading] = useState(true);
+  
   const today = new Date();
   const currentMonth = startOfMonth(today);
   const monthEnd = endOfMonth(today);
@@ -11,38 +15,59 @@ const StreakCalendar = ({ habits = [] }) => {
   const calendarEnd = endOfWeek(monthEnd);
   const calendarDays = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
 
-  // Generate realistic streak data based on actual habits
-  const generateStreakData = () => {
-    const streakData = {};
-    const totalHabits = habits.length || 3; // Default to 3 if no habits
-    
-    // Generate data for the last 45 days to cover the calendar view
-    for (let i = 45; i >= 0; i--) {
-      const date = subDays(today, i);
-      const dateKey = format(date, 'yyyy-MM-dd');
-      
-      // More realistic completion pattern
-      let completedHabits = 0;
-      if (Math.random() > 0.2) { // 80% chance of some activity
-        completedHabits = Math.floor(Math.random() * (totalHabits + 1));
+  // Load real user data
+  useEffect(() => {
+    const loadStreakData = async () => {
+      try {
+        setLoading(true);
+        const data = {};
+        
+        // Get data for each day in the calendar view
+        for (const date of calendarDays) {
+          const dateKey = format(date, 'yyyy-MM-dd');
+          try {
+            const response = await ApiService.getLogsByDate(dateKey);
+            const logs = response.data || [];
+            data[dateKey] = {
+              completed: logs.filter(log => log.completed).length,
+              total: habits.length
+            };
+          } catch (error) {
+            // If no logs for this date, set to 0
+            data[dateKey] = {
+              completed: 0,
+              total: habits.length
+            };
+          }
+        }
+        
+        setStreakData(data);
+      } catch (error) {
+        console.error('Failed to load streak data:', error);
+        // Fallback to empty data
+        const emptyData = {};
+        calendarDays.forEach(date => {
+          const dateKey = format(date, 'yyyy-MM-dd');
+          emptyData[dateKey] = { completed: 0, total: habits.length };
+        });
+        setStreakData(emptyData);
+      } finally {
+        setLoading(false);
       }
-      
-      streakData[dateKey] = {
-        completed: completedHabits,
-        total: totalHabits
-      };
-    }
-    
-    return streakData;
-  };
+    };
 
-  const streakData = generateStreakData();
+    if (habits.length > 0) {
+      loadStreakData();
+    } else {
+      setLoading(false);
+    }
+  }, [habits.length]);
 
   const getIntensity = (date) => {
     const dateKey = format(date, 'yyyy-MM-dd');
     const data = streakData[dateKey];
     
-    if (!data || data.completed === 0) return 0;
+    if (!data || data.completed === 0 || data.total === 0) return 0;
     
     const percentage = data.completed / data.total;
     if (percentage >= 0.9) return 4; // Very high
@@ -65,10 +90,10 @@ const StreakCalendar = ({ habits = [] }) => {
   const getDayInfo = (date) => {
     const dateKey = format(date, 'yyyy-MM-dd');
     const data = streakData[dateKey];
-    return data || { completed: 0, total: habits.length || 3 };
+    return data || { completed: 0, total: habits.length };
   };
 
-  // Calculate current streak
+  // Calculate current streak from real data
   const calculateCurrentStreak = () => {
     let streak = 0;
     for (let i = 0; i <= 30; i++) {
@@ -84,6 +109,26 @@ const StreakCalendar = ({ habits = [] }) => {
   };
 
   const currentStreak = calculateCurrentStreak();
+
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h4 className="text-lg font-semibold text-secondary">
+            {format(today, 'MMM yyyy')}
+          </h4>
+          <div className="text-xs text-muted font-medium">
+            Loading...
+          </div>
+        </div>
+        <div className="grid grid-cols-7 gap-1">
+          {Array.from({ length: 42 }).map((_, index) => (
+            <div key={index} className="aspect-square bg-gray-100 rounded-lg animate-pulse" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
