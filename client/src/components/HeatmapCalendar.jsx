@@ -42,11 +42,11 @@ const HeatmapCalendar = memo(({ data = [], className = '' }) => {
             to={format(today, 'yyyy-MM-dd')}
             emptyColor="#F5E6D3"
             colors={[
-              '#dbeafe',
-              '#bfdbfe', 
-              '#93c5fd',
-              '#60a5fa',
-              '#3b82f6'
+              '#F0B3B3',
+              '#E998A1', 
+              '#E17D8F',
+              '#DA627D',
+              '#C8516B'
             ]}
             margin={{ top: 10, right: 10, bottom: 10, left: 10 }}
             yearSpacing={40}
@@ -79,11 +79,11 @@ const HeatmapCalendar = memo(({ data = [], className = '' }) => {
       <div className="flex items-center justify-between mt-4 pt-4 border-t border-accent">
         <div className="text-xs text-muted">Less</div>
         <div className="flex items-center gap-1">
-          {['#dbeafe',
-              '#bfdbfe',
-              '#93c5fd',
-              '#60a5fa',
-              '#3b82f6'].map((color, index) => (
+          {['#F0B3B3',
+              '#E998A1', 
+              '#E17D8F',
+              '#DA627D',
+              '#C8516B'].map((color, index) => (
             <div
               key={index}
               className="w-3 h-3 rounded-sm"

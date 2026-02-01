@@ -26,7 +26,7 @@ const HabitsList = ({
         </div>
       </div>
 
-      {/* Habits List - Scrollable */}
+      {/* Habits List - No scroll, clean layout */}
       {habits.length === 0 ? (
         <div className="text-center py-8 flex-1 flex items-center justify-center">
           <div>
@@ -36,8 +36,8 @@ const HabitsList = ({
           </div>
         </div>
       ) : (
-        <div className="flex-1 overflow-hidden">
-          <div className={`space-y-2 ${habits.length > 4 ? 'max-h-64 overflow-y-auto pr-2' : ''}`}>
+        <div className="flex-1 overflow-y-auto scrollbar-hide">
+          <div className="space-y-2">
             {habits.map((habit) => (
               <HabitListItem
                 key={habit._id}

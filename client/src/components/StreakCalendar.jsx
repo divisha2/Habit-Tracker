@@ -18,14 +18,16 @@ const StreakCalendar = ({ habits = [] }) => {
   // Load real user data
   useEffect(() => {
     const loadStreakData = async () => {
+      if (habits.length === 0) {
+        setLoading(false);
+        return;
+      }
+
       try {
         setLoading(true);
         const data = {};
         
         // Get all logs for the date range in one call
-        const startDate = format(calendarStart, 'yyyy-MM-dd');
-        const endDate = format(calendarEnd, 'yyyy-MM-dd');
-        
         try {
           // Fetch all logs at once
           const response = await ApiService.getLogs();
@@ -74,12 +76,8 @@ const StreakCalendar = ({ habits = [] }) => {
       }
     };
 
-    if (habits.length > 0) {
-      loadStreakData();
-    } else {
-      setLoading(false);
-    }
-  }, [habits.length]);
+    loadStreakData();
+  }, [habits]);
 
   const getIntensity = (date) => {
     const dateKey = format(date, 'yyyy-MM-dd');
@@ -97,10 +95,10 @@ const StreakCalendar = ({ habits = [] }) => {
 
   const getIntensityColor = (intensity) => {
     switch (intensity) {
-      case 4: return 'bg-primary'; // Darkest coral
-      case 3: return 'bg-primary/80';
-      case 2: return 'bg-primary/60';
-      case 1: return 'bg-primary/40';
+      case 4: return 'bg-[#DA627D]'; // Darkest coral (primary color)
+      case 3: return 'bg-[#E17D8F]';
+      case 2: return 'bg-[#E998A1]';
+      case 1: return 'bg-[#F0B3B3]';
       default: return 'bg-gray-100'; // No activity
     }
   };
@@ -225,7 +223,13 @@ const StreakCalendar = ({ habits = [] }) => {
           {[0, 1, 2, 3, 4].map(intensity => (
             <div
               key={intensity}
-              className={`w-3 h-3 rounded-sm ${getIntensityColor(intensity)}`}
+              className={`w-3 h-3 rounded-sm ${
+                intensity === 0 ? 'bg-gray-100' :
+                intensity === 1 ? 'bg-[#F0B3B3]' :
+                intensity === 2 ? 'bg-[#E998A1]' :
+                intensity === 3 ? 'bg-[#E17D8F]' :
+                'bg-[#DA627D]'
+              }`}
               title={`${intensity === 0 ? 'No' : intensity === 1 ? 'Low' : intensity === 2 ? 'Medium' : intensity === 3 ? 'High' : 'Very High'} activity`}
             />
           ))}

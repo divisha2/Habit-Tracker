@@ -227,7 +227,10 @@ const AppleDashboard = () => {
 
           {/* Streak Calendar */}
           <div className="border border-gray-200 rounded-2xl p-6 bg-white shadow-sm hover:shadow-md transition-shadow">
-            <StreakCalendar habits={habits} />
+            <StreakCalendar 
+              habits={habits} 
+              key={`streak-${habits.length}-${habits.filter(h => h.completedToday).length}`}
+            />
           </div>
         </div>
 
