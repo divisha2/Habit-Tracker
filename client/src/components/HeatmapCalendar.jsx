@@ -95,6 +95,6 @@ const HeatmapCalendar = memo(({ data = [], className = '' }) => {
       </div>
     </div>
   );
-};
+});
 
-export default memo(HeatmapCalendar);
+export default HeatmapCalendar;

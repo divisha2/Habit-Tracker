@@ -141,6 +141,6 @@ const TrendChart = memo(({ data = [], className = '', type = 'line' }) => {
       )}
     </div>
   );
-};
+});
 
-export default memo(TrendChart);
+export default TrendChart;
