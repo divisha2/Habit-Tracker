@@ -16,10 +16,23 @@ import authRoutes from './routes/authRoutes.js';
 // Load environment variables
 dotenv.config();
 
-// Connect to database
-connectDB();
-
 const app = express();
+
+// Connect to database (async for serverless)
+let dbConnected = false;
+const dbConnection = connectDB().then(() => {
+  dbConnected = true;
+}).catch(err => {
+  console.error('Database connection failed:', err);
+});
+
+// Middleware to ensure DB is connected
+app.use(async (req, res, next) => {
+  if (!dbConnected) {
+    await dbConnection;
+  }
+  next();
+});
 
 // Security middleware
 app.use(helmet());
