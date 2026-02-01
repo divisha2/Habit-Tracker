@@ -1,6 +1,15 @@
 import mongoose from 'mongoose';
 
+// Cache the database connection for serverless
+let cachedConnection = null;
+
 const connectDB = async () => {
+  // Return cached connection if available
+  if (cachedConnection && mongoose.connection.readyState === 1) {
+    console.log('✅ Using cached MongoDB connection');
+    return cachedConnection;
+  }
+
   try {
     console.log('🔄 Attempting MongoDB Atlas connection...');
     
@@ -53,6 +62,7 @@ const connectDB = async () => {
         console.log(`🔌 Ready State: ${conn.connection.readyState}`);
         
         connected = true;
+        cachedConnection = conn; // Cache the connection
         
         // Test the connection with a simple operation
         await mongoose.connection.db.admin().ping();
@@ -61,10 +71,12 @@ const connectDB = async () => {
         // Set up connection event handlers
         mongoose.connection.on('error', (err) => {
           console.error('❌ MongoDB connection error:', err.message);
+          cachedConnection = null; // Clear cache on error
         });
 
         mongoose.connection.on('disconnected', () => {
           console.log('⚠️ MongoDB disconnected');
+          cachedConnection = null; // Clear cache on disconnect
         });
 
         mongoose.connection.on('reconnected', () => {
@@ -76,6 +88,7 @@ const connectDB = async () => {
           try {
             await mongoose.connection.close();
             console.log('🔄 MongoDB connection closed gracefully');
+            cachedConnection = null;
           } catch (err) {
             console.error('Error closing MongoDB connection:', err);
           }
@@ -105,8 +118,11 @@ const connectDB = async () => {
       throw new Error('MongoDB connection failed - application cannot start without database');
     }
 
+    return cachedConnection;
+
   } catch (error) {
     console.error('❌ Database connection setup failed:', error.message);
+    cachedConnection = null;
     throw error; // Re-throw to prevent server from starting without database
   }
 };

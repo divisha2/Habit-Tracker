@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { ResponsiveCalendar } from '@nivo/calendar';
 import { subMonths, format } from 'date-fns';
 
-const HeatmapCalendar = ({ data = [], className = '' }) => {
+const HeatmapCalendar = memo(({ data = [], className = '' }) => {
   const today = new Date();
   const sixMonthsAgo = subMonths(today, 6);
 
@@ -79,11 +79,11 @@ const HeatmapCalendar = ({ data = [], className = '' }) => {
       <div className="flex items-center justify-between mt-4 pt-4 border-t border-accent">
         <div className="text-xs text-muted">Less</div>
         <div className="flex items-center gap-1">
-          {['#ffcbdeff',
-              '#ffabd5ff',
-              '#e46cb4ff',
-              '#ed459fff',
-              '#ff3797ff'].map((color, index) => (
+          {['#dbeafe',
+              '#bfdbfe',
+              '#93c5fd',
+              '#60a5fa',
+              '#3b82f6'].map((color, index) => (
             <div
               key={index}
               className="w-3 h-3 rounded-sm"
@@ -97,4 +97,4 @@ const HeatmapCalendar = ({ data = [], className = '' }) => {
   );
 };
 
-export default HeatmapCalendar;
+export default memo(HeatmapCalendar);

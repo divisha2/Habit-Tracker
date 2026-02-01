@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart } from 'recharts';
 import { format, parseISO } from 'date-fns';
 
-const TrendChart = ({ data = [], className = '', type = 'line' }) => {
+const TrendChart = memo(({ data = [], className = '', type = 'line' }) => {
   const chartData = data.map(item => ({
     ...item,
     date: format(parseISO(item.date), 'MMM dd'),
@@ -143,4 +143,4 @@ const TrendChart = ({ data = [], className = '', type = 'line' }) => {
   );
 };
 
-export default TrendChart;
+export default memo(TrendChart);
