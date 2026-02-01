@@ -22,23 +22,41 @@ const StreakCalendar = ({ habits = [] }) => {
         setLoading(true);
         const data = {};
         
-        // Get data for each day in the calendar view
-        for (const date of calendarDays) {
-          const dateKey = format(date, 'yyyy-MM-dd');
-          try {
-            const response = await ApiService.getLogsByDate(dateKey);
-            const logs = response.data || [];
+        // Get all logs for the date range in one call
+        const startDate = format(calendarStart, 'yyyy-MM-dd');
+        const endDate = format(calendarEnd, 'yyyy-MM-dd');
+        
+        try {
+          // Fetch all logs at once
+          const response = await ApiService.getLogs();
+          const allLogs = response.data || [];
+          
+          // Group logs by date
+          const logsByDate = {};
+          allLogs.forEach(log => {
+            const logDate = format(new Date(log.date), 'yyyy-MM-dd');
+            if (!logsByDate[logDate]) {
+              logsByDate[logDate] = [];
+            }
+            logsByDate[logDate].push(log);
+          });
+          
+          // Build streak data for each calendar day
+          calendarDays.forEach(date => {
+            const dateKey = format(date, 'yyyy-MM-dd');
+            const logs = logsByDate[dateKey] || [];
             data[dateKey] = {
               completed: logs.filter(log => log.completed).length,
               total: habits.length
             };
-          } catch (error) {
-            // If no logs for this date, set to 0
-            data[dateKey] = {
-              completed: 0,
-              total: habits.length
-            };
-          }
+          });
+        } catch (error) {
+          console.error('Failed to load logs:', error);
+          // Fallback to empty data
+          calendarDays.forEach(date => {
+            const dateKey = format(date, 'yyyy-MM-dd');
+            data[dateKey] = { completed: 0, total: habits.length };
+          });
         }
         
         setStreakData(data);
@@ -93,22 +111,37 @@ const StreakCalendar = ({ habits = [] }) => {
     return data || { completed: 0, total: habits.length };
   };
 
-  // Calculate current streak from real data
-  const calculateCurrentStreak = () => {
-    let streak = 0;
-    for (let i = 0; i <= 30; i++) {
+  // Calculate current streak and best streak from real data
+  const calculateStreaks = () => {
+    let currentStreak = 0;
+    let bestStreak = 0;
+    let tempStreak = 0;
+    
+    // Check last 90 days for streaks
+    for (let i = 0; i <= 90; i++) {
       const date = subDays(today, i);
       const dayInfo = getDayInfo(date);
+      
       if (dayInfo.completed > 0) {
-        streak++;
+        tempStreak++;
+        if (i === 0 || currentStreak > 0) {
+          currentStreak = tempStreak;
+        }
+        if (tempStreak > bestStreak) {
+          bestStreak = tempStreak;
+        }
       } else {
-        break;
+        if (i === 0) {
+          currentStreak = 0;
+        }
+        tempStreak = 0;
       }
     }
-    return streak;
+    
+    return { currentStreak, bestStreak };
   };
 
-  const currentStreak = calculateCurrentStreak();
+  const { currentStreak, bestStreak } = calculateStreaks();
 
   if (loading) {
     return (
@@ -207,7 +240,7 @@ const StreakCalendar = ({ habits = [] }) => {
           <div className="text-xs text-muted">Current Streak</div>
         </div>
         <div className="text-center">
-          <div className="text-lg font-bold text-secondary">25</div>
+          <div className="text-lg font-bold text-secondary">{bestStreak}</div>
           <div className="text-xs text-muted">Best Streak</div>
         </div>
         <div className="text-center">
