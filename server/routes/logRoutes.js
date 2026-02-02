@@ -1,5 +1,6 @@
 import express from 'express';
 import {
+  getAllLogs,
   toggleHabitCompletion,
   getHabitLogs,
   getLogsByDate,
@@ -19,6 +20,7 @@ router.post('/toggle', toggleHabitCompletion);
 router.put('/bulk', bulkUpdateLogs);
 
 // Query routes
+router.get('/', getAllLogs);
 router.get('/habit/:habitId', getHabitLogs);
 router.get('/date/:date', getLogsByDate);
 

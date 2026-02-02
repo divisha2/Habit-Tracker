@@ -1,13 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Check, X } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import Navbar from './Navbar';
-import HeatmapCalendar from './HeatmapCalendar';
 import StreakCalendar from './StreakCalendar';
 import HabitsList from './HabitsList';
 import TrendChart from './TrendChart';
 import AddHabitModal from './AddHabitModal';
 import { getRandomQuote } from '../utils/motivationalQuotes';
-import { subDays, format } from 'date-fns';
 import { useAuth } from '../contexts/AuthContext';
 import ApiService from '../services/api';
 
@@ -234,32 +232,18 @@ const AppleDashboard = () => {
           </div>
         </div>
 
-        {/* Analytics Grid - Larger and More Spaced */}
-        <div id="analytics" className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+        {/* Analytics Grid - Full Width Trend Chart */}
+        <div id="analytics">
           <div className="border border-gray-200 rounded-2xl p-8 bg-white shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between mb-6">
               <h4 className="text-2xl font-bold text-secondary font-display">
-                Activity Heatmap
+                30-Day Completion Trend
               </h4>
               <div className="text-xs text-muted bg-accent/20 px-3 py-1 rounded-full">
-                Last 6 months
+                Daily Progress
               </div>
             </div>
-            <div className="h-56">
-              <HeatmapCalendar data={analytics.heatmapData} />
-            </div>
-          </div>
-          
-          <div className="border border-gray-200 rounded-2xl p-8 bg-white shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between mb-6">
-              <h4 className="text-2xl font-bold text-secondary font-display">
-                30-Day Trend
-              </h4>
-              <div className="text-xs text-muted bg-accent/20 px-3 py-1 rounded-full">
-                Consistency %
-              </div>
-            </div>
-            <div className="h-56">
+            <div className="h-80">
               <TrendChart data={analytics.weeklyTrend} type="area" />
             </div>
           </div>

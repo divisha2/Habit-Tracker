@@ -108,6 +108,10 @@ class ApiService {
     return this.request(`/logs/date/${date}`);
   }
 
+  async getLogs() {
+    return this.request('/logs');
+  }
+
   // Stats API (for Recharts)
   async getDashboardStats() {
     return this.request('/stats/dashboard');

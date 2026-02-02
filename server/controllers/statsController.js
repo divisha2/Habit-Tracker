@@ -24,14 +24,13 @@ export const getDashboardStats = async (req, res, next) => {
         $match: {
           userId,
           habitId: { $in: habitIds },
-          date: { $gte: startOfDay(sixMonthsAgo) },
-          completed: true
+          date: { $gte: startOfDay(sixMonthsAgo) }
         }
       },
       {
         $group: {
           _id: { $dateToString: { format: "%Y-%m-%d", date: "$date" } },
-          value: { $sum: 1 }
+          value: { $sum: { $cond: [{ $eq: ["$completed", true] }, 1, 0] } }
         }
       },
       {
@@ -49,21 +48,26 @@ export const getDashboardStats = async (req, res, next) => {
         $match: {
           userId,
           habitId: { $in: habitIds },
-          date: { $gte: startOfDay(thirtyDaysAgo) },
-          completed: true
+          date: { $gte: startOfDay(thirtyDaysAgo) }
         }
       },
       {
         $group: {
           _id: { $dateToString: { format: "%Y-%m-%d", date: "$date" } },
-          completions: { $sum: 1 }
+          completions: { $sum: { $cond: [{ $eq: ["$completed", true] }, 1, 0] } }
         }
       },
       {
         $project: {
           date: "$_id",
           completions: 1,
-          percentage: { $multiply: [{ $divide: ["$completions", habits.length] }, 100] },
+          percentage: { 
+            $cond: [
+              { $gt: [habits.length, 0] },
+              { $multiply: [{ $divide: ["$completions", habits.length] }, 100] },
+              0
+            ]
+          },
           _id: 0
         }
       },

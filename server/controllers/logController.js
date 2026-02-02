@@ -2,6 +2,28 @@ import Habit from '../models/Habit.js';
 import Log from '../models/Log.js';
 import { startOfDay, parseISO, format } from 'date-fns';
 
+// @desc    Get all logs for user
+// @route   GET /api/logs
+// @access  Private
+export const getAllLogs = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    
+    // Get all logs for this user
+    const logs = await Log.find({ userId })
+      .populate('habitId', 'name category color')
+      .sort({ date: -1 });
+    
+    res.status(200).json({
+      success: true,
+      count: logs.length,
+      data: logs
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // @desc    Toggle habit completion (One-Tap Check-in)
 // @route   POST /api/logs/toggle
 // @access  Private
