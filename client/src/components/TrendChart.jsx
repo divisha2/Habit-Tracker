@@ -20,10 +20,10 @@ const TrendChart = memo(({ data = [], className = '', type = 'line' }) => {
           <div className="text-sm text-muted mt-1">
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full bg-primary" />
-              Completions: {payload[0].value}
+              Completions: {payload[0].value || 0}
             </div>
             <div className="text-xs text-muted mt-1">
-              {data.percentage}% completion rate
+              {Math.round(data.percentage || 0)}% completion rate
             </div>
           </div>
         </div>
@@ -121,19 +121,19 @@ const TrendChart = memo(({ data = [], className = '', type = 'line' }) => {
         <div className="flex items-center justify-between mt-4 pt-4 border-t border-accent">
           <div className="text-center">
             <div className="text-lg font-bold text-secondary">
-              {Math.max(...chartData.map(d => d.completions))}
+              {Math.max(...chartData.map(d => d.completions || 0))}
             </div>
             <div className="text-xs text-muted">Peak Day</div>
           </div>
           <div className="text-center">
             <div className="text-lg font-bold text-secondary">
-              {Math.round(chartData.reduce((sum, d) => sum + d.completions, 0) / chartData.length)}
+              {chartData.length > 0 ? Math.round(chartData.reduce((sum, d) => sum + (d.completions || 0), 0) / chartData.length) : 0}
             </div>
             <div className="text-xs text-muted">Avg/Day</div>
           </div>
           <div className="text-center">
             <div className="text-lg font-bold text-secondary">
-              {Math.round(chartData.reduce((sum, d) => sum + d.percentage, 0) / chartData.length)}%
+              {chartData.length > 0 ? Math.round(chartData.reduce((sum, d) => sum + (d.percentage || 0), 0) / chartData.length) : 0}%
             </div>
             <div className="text-xs text-muted">Avg Rate</div>
           </div>

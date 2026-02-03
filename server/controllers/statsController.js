@@ -23,7 +23,6 @@ export const getDashboardStats = async (req, res, next) => {
       {
         $match: {
           userId,
-          habitId: { $in: habitIds },
           date: { $gte: startOfDay(sixMonthsAgo) }
         }
       },
@@ -42,19 +41,19 @@ export const getDashboardStats = async (req, res, next) => {
       }
     ]);
     
-    // Get logs for trend chart (last 30 days)
+    // Get logs for trend chart (last 30 days) with accurate per-day totals
     const trendLogs = await Log.aggregate([
       {
         $match: {
           userId,
-          habitId: { $in: habitIds },
           date: { $gte: startOfDay(thirtyDaysAgo) }
         }
       },
       {
         $group: {
           _id: { $dateToString: { format: "%Y-%m-%d", date: "$date" } },
-          completions: { $sum: { $cond: [{ $eq: ["$completed", true] }, 1, 0] } }
+          completions: { $sum: { $cond: [{ $eq: ["$completed", true] }, 1, 0] } },
+          totalHabits: { $sum: 1 }
         }
       },
       {
@@ -62,10 +61,15 @@ export const getDashboardStats = async (req, res, next) => {
           date: "$_id",
           completions: 1,
           percentage: { 
-            $cond: [
-              { $gt: [habits.length, 0] },
-              { $multiply: [{ $divide: ["$completions", habits.length] }, 100] },
-              0
+            $round: [
+              {
+                $cond: [
+                  { $gt: ["$totalHabits", 0] },
+                  { $multiply: [{ $divide: ["$completions", "$totalHabits"] }, 100] },
+                  0
+                ]
+              },
+              2
             ]
           },
           _id: 0

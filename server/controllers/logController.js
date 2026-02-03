@@ -9,10 +9,10 @@ export const getAllLogs = async (req, res, next) => {
   try {
     const userId = req.user.id;
     
-    // Get all logs for this user
+    // Get all logs for this user (don't populate to avoid issues with deleted habits)
     const logs = await Log.find({ userId })
-      .populate('habitId', 'name category color')
-      .sort({ date: -1 });
+      .sort({ date: -1 })
+      .lean();
     
     res.status(200).json({
       success: true,

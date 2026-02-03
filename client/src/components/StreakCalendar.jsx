@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, subDays, startOfWeek, endOfWeek } from 'date-fns';
 import ApiService from '../services/api';
 
-const StreakCalendar = ({ habits = [] }) => {
+const StreakCalendar = ({ habits = [], refreshKey = 0 }) => {
   const [streakData, setStreakData] = useState({});
   const [loading, setLoading] = useState(true);
   
@@ -18,11 +18,6 @@ const StreakCalendar = ({ habits = [] }) => {
   // Load real user data
   useEffect(() => {
     const loadStreakData = async () => {
-      if (habits.length === 0) {
-        setLoading(false);
-        return;
-      }
-
       try {
         setLoading(true);
         const data = {};
@@ -35,21 +30,27 @@ const StreakCalendar = ({ habits = [] }) => {
           
           // Group logs by date
           const logsByDate = {};
+          
           allLogs.forEach(log => {
-            const logDate = format(new Date(log.date), 'yyyy-MM-dd');
-            if (!logsByDate[logDate]) {
-              logsByDate[logDate] = [];
+            // Ensure date is properly parsed and formatted
+            const logDate = new Date(log.date);
+            const dateKey = format(logDate, 'yyyy-MM-dd');
+            
+            if (!logsByDate[dateKey]) {
+              logsByDate[dateKey] = [];
             }
-            logsByDate[logDate].push(log);
+            logsByDate[dateKey].push(log);
           });
           
           // Build streak data for each calendar day
           calendarDays.forEach(date => {
             const dateKey = format(date, 'yyyy-MM-dd');
             const logs = logsByDate[dateKey] || [];
+            const completedCount = logs.filter(log => log.completed).length;
+            
             data[dateKey] = {
-              completed: logs.filter(log => log.completed).length,
-              total: habits.length
+              completed: completedCount,
+              total: logs.length > 0 ? logs.length : (format(date, 'yyyy-MM-dd') === format(today, 'yyyy-MM-dd') ? habits.length : 0)
             };
           });
         } catch (error) {
@@ -57,27 +58,24 @@ const StreakCalendar = ({ habits = [] }) => {
           // Fallback to empty data
           calendarDays.forEach(date => {
             const dateKey = format(date, 'yyyy-MM-dd');
-            data[dateKey] = { completed: 0, total: habits.length };
+            data[dateKey] = { 
+              completed: 0, 
+              total: format(date, 'yyyy-MM-dd') === format(today, 'yyyy-MM-dd') ? habits.length : 0 
+            };
           });
         }
         
         setStreakData(data);
       } catch (error) {
         console.error('Failed to load streak data:', error);
-        // Fallback to empty data
-        const emptyData = {};
-        calendarDays.forEach(date => {
-          const dateKey = format(date, 'yyyy-MM-dd');
-          emptyData[dateKey] = { completed: 0, total: habits.length };
-        });
-        setStreakData(emptyData);
+        setStreakData({});
       } finally {
         setLoading(false);
       }
     };
 
     loadStreakData();
-  }, [habits]);
+  }, [habits, refreshKey]);
 
   const getIntensity = (date) => {
     const dateKey = format(date, 'yyyy-MM-dd');
@@ -106,11 +104,16 @@ const StreakCalendar = ({ habits = [] }) => {
   const getDayInfo = (date) => {
     const dateKey = format(date, 'yyyy-MM-dd');
     const data = streakData[dateKey];
-    return data || { completed: 0, total: habits.length };
+    const isToday = format(date, 'yyyy-MM-dd') === format(today, 'yyyy-MM-dd');
+    return data || { completed: 0, total: isToday ? habits.length : 0 };
   };
 
   // Calculate current streak and best streak from real data
   const calculateStreaks = () => {
+    if (habits.length === 0 || Object.keys(streakData).length === 0) {
+      return { currentStreak: 0, bestStreak: 0 };
+    }
+    
     let currentStreak = 0;
     let bestStreak = 0;
     let tempStreak = 0;
@@ -120,7 +123,7 @@ const StreakCalendar = ({ habits = [] }) => {
       const date = subDays(today, i);
       const dayInfo = getDayInfo(date);
       
-      if (dayInfo.completed > 0) {
+      if (dayInfo.completed > 0 && dayInfo.total > 0) {
         tempStreak++;
         if (i === 0 || currentStreak > 0) {
           currentStreak = tempStreak;

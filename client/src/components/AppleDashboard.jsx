@@ -27,6 +27,7 @@ const AppleDashboard = () => {
   const [editName, setEditName] = useState('');
   const [currentQuote] = useState(getRandomQuote());
   const [analytics, setAnalytics] = useState({ heatmapData: [], weeklyTrend: [] });
+  const [calendarRefresh, setCalendarRefresh] = useState(0);
 
   // Load habits on component mount
   useEffect(() => {
@@ -77,8 +78,11 @@ const AppleDashboard = () => {
           : habit
       ));
       
-      // Reload analytics to reflect changes
-      loadAnalytics();
+      // Small delay to ensure database write completes
+      setTimeout(() => {
+        setCalendarRefresh(prev => prev + 1);
+        loadAnalytics();
+      }, 300);
     } catch (err) {
       console.error('Error toggling habit:', err);
     }
@@ -88,6 +92,10 @@ const AppleDashboard = () => {
     try {
       await ApiService.deleteHabit(habitId);
       setHabits(prev => prev.filter(h => h._id !== habitId));
+      // Refresh calendar after deletion
+      setTimeout(() => {
+        setCalendarRefresh(prev => prev + 1);
+      }, 300);
     } catch (err) {
       console.error('Error deleting habit:', err);
     }
@@ -114,6 +122,10 @@ const AppleDashboard = () => {
     try {
       const data = await ApiService.createHabit(habitData);
       setHabits(prev => [...prev, data.data]);
+      // Refresh calendar after adding new habit
+      setTimeout(() => {
+        setCalendarRefresh(prev => prev + 1);
+      }, 300);
     } catch (err) {
       console.error('Error creating habit:', err);
     }
@@ -227,7 +239,7 @@ const AppleDashboard = () => {
           <div className="border border-gray-200 rounded-2xl p-6 bg-white shadow-sm hover:shadow-md transition-shadow">
             <StreakCalendar 
               habits={habits} 
-              key={`streak-${habits.length}-${habits.filter(h => h.completedToday).length}`}
+              refreshKey={calendarRefresh}
             />
           </div>
         </div>
