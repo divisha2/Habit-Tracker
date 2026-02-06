@@ -1,5 +1,6 @@
 import Habit from '../models/Habit.js';
 import Log from '../models/Log.js';
+import mongoose from 'mongoose';
 import { subDays, format, startOfDay } from 'date-fns';
 
 // @desc    Get dashboard statistics (formatted for Recharts)
@@ -11,7 +12,7 @@ export const getDashboardStats = async (req, res, next) => {
     
     // Use MongoDB
     const today = new Date();
-    const thirtyDaysAgo = subDays(today, 30);
+    const startOfCurrentMonth = new Date(today.getFullYear(), today.getMonth(), 1);
     const sixMonthsAgo = subDays(today, 180);
     
     // Get user's habits
@@ -22,7 +23,7 @@ export const getDashboardStats = async (req, res, next) => {
     const heatmapLogs = await Log.aggregate([
       {
         $match: {
-          userId,
+          userId: new mongoose.Types.ObjectId(userId),
           date: { $gte: startOfDay(sixMonthsAgo) }
         }
       },
@@ -41,35 +42,47 @@ export const getDashboardStats = async (req, res, next) => {
       }
     ]);
     
-    // Get logs for trend chart (last 30 days) with accurate per-day totals
+    // Get logs for trend chart (current month only) - show all historical data
+    // Match calendar logic: count completed logs / all logs
     const trendLogs = await Log.aggregate([
       {
         $match: {
-          userId,
-          date: { $gte: startOfDay(thirtyDaysAgo) }
+          userId: new mongoose.Types.ObjectId(userId),
+          date: { $gte: startOfDay(startOfCurrentMonth) }
         }
       },
       {
         $group: {
           _id: { $dateToString: { format: "%Y-%m-%d", date: "$date" } },
-          completions: { $sum: { $cond: [{ $eq: ["$completed", true] }, 1, 0] } },
-          totalHabits: { $sum: 1 }
+          completions: { 
+            $sum: { 
+              $cond: [
+                { $eq: [{ $ifNull: ["$completed", false] }, true] }, 
+                1, 
+                0
+              ] 
+            } 
+          },
+          totalLogs: { $sum: 1 }
         }
       },
       {
         $project: {
           date: "$_id",
-          completions: 1,
+          completions: "$completions",
+          totalLogs: "$totalLogs",
           percentage: { 
-            $round: [
-              {
-                $cond: [
-                  { $gt: ["$totalHabits", 0] },
-                  { $multiply: [{ $divide: ["$completions", "$totalHabits"] }, 100] },
-                  0
+            $cond: [
+              { $gt: ["$totalLogs", 0] },
+              { 
+                $round: [
+                  {
+                    $multiply: [{ $divide: ["$completions", "$totalLogs"] }, 100]
+                  },
+                  1
                 ]
               },
-              2
+              0
             ]
           },
           _id: 0

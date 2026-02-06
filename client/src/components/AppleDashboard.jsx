@@ -28,6 +28,7 @@ const AppleDashboard = () => {
   const [currentQuote] = useState(getRandomQuote());
   const [analytics, setAnalytics] = useState({ heatmapData: [], weeklyTrend: [] });
   const [calendarRefresh, setCalendarRefresh] = useState(0);
+  const [calendarData, setCalendarData] = useState(null);
 
   // Load habits on component mount
   useEffect(() => {
@@ -58,6 +59,13 @@ const AppleDashboard = () => {
       setAnalytics(generateAnalytics());
     }
   };
+  
+  // Refresh analytics when calendar refreshes to keep them in sync
+  useEffect(() => {
+    if (calendarRefresh > 0) {
+      loadAnalytics();
+    }
+  }, [calendarRefresh]);
 
   const completedToday = habits.filter(h => h.completedToday).length;
   const totalHabits = habits.length;
@@ -78,11 +86,11 @@ const AppleDashboard = () => {
           : habit
       ));
       
-      // Small delay to ensure database write completes
+      // Refresh both calendar and analytics
       setTimeout(() => {
         setCalendarRefresh(prev => prev + 1);
         loadAnalytics();
-      }, 300);
+      }, 100);
     } catch (err) {
       console.error('Error toggling habit:', err);
     }
@@ -93,9 +101,7 @@ const AppleDashboard = () => {
       await ApiService.deleteHabit(habitId);
       setHabits(prev => prev.filter(h => h._id !== habitId));
       // Refresh calendar after deletion
-      setTimeout(() => {
-        setCalendarRefresh(prev => prev + 1);
-      }, 300);
+      setCalendarRefresh(prev => prev + 1);
     } catch (err) {
       console.error('Error deleting habit:', err);
     }
@@ -123,9 +129,7 @@ const AppleDashboard = () => {
       const data = await ApiService.createHabit(habitData);
       setHabits(prev => [...prev, data.data]);
       // Refresh calendar after adding new habit
-      setTimeout(() => {
-        setCalendarRefresh(prev => prev + 1);
-      }, 300);
+      setCalendarRefresh(prev => prev + 1);
     } catch (err) {
       console.error('Error creating habit:', err);
     }
@@ -240,6 +244,7 @@ const AppleDashboard = () => {
             <StreakCalendar 
               habits={habits} 
               refreshKey={calendarRefresh}
+              onDataCalculated={setCalendarData}
             />
           </div>
         </div>
@@ -249,14 +254,14 @@ const AppleDashboard = () => {
           <div className="border border-gray-200 rounded-2xl p-8 bg-white shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between mb-6">
               <h4 className="text-2xl font-bold text-secondary font-display">
-                30-Day Completion Trend
+                {new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })} Completion Trend
               </h4>
               <div className="text-xs text-muted bg-accent/20 px-3 py-1 rounded-full">
                 Daily Progress
               </div>
             </div>
             <div className="h-80">
-              <TrendChart data={analytics.weeklyTrend} type="area" />
+              <TrendChart data={calendarData || analytics.weeklyTrend} type="area" />
             </div>
           </div>
         </div>

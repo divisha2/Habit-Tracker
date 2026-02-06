@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, subDays, startOfWeek, endOfWeek } from 'date-fns';
 import ApiService from '../services/api';
 
-const StreakCalendar = ({ habits = [], refreshKey = 0 }) => {
+const StreakCalendar = ({ habits = [], refreshKey = 0, onDataCalculated }) => {
   const [streakData, setStreakData] = useState({});
   const [loading, setLoading] = useState(true);
   
@@ -10,29 +10,39 @@ const StreakCalendar = ({ habits = [], refreshKey = 0 }) => {
   const currentMonth = startOfMonth(today);
   const monthEnd = endOfMonth(today);
   
-  // Get the full calendar grid (including days from previous/next month)
-  const calendarStart = startOfWeek(currentMonth);
-  const calendarEnd = endOfWeek(monthEnd);
-  const calendarDays = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
+  // Memoize calendar days to avoid recalculation on every render
+  const calendarDays = useMemo(() => {
+    const calendarStart = startOfWeek(currentMonth);
+    const calendarEnd = endOfWeek(monthEnd);
+    return eachDayOfInterval({ start: calendarStart, end: calendarEnd });
+  }, [currentMonth, monthEnd]);
 
   // Load real user data
   useEffect(() => {
     const loadStreakData = async () => {
+      if (habits.length === 0) {
+        setStreakData({});
+        setLoading(false);
+        return;
+      }
+      
       try {
         setLoading(true);
+        
         const data = {};
         
-        // Get all logs for the date range in one call
         try {
           // Fetch all logs at once
           const response = await ApiService.getLogs();
           const allLogs = response.data || [];
           
+          // Get current habit IDs
+          const currentHabitIds = new Set(habits.map(h => h._id));
+          
           // Group logs by date
           const logsByDate = {};
           
           allLogs.forEach(log => {
-            // Ensure date is properly parsed and formatted
             const logDate = new Date(log.date);
             const dateKey = format(logDate, 'yyyy-MM-dd');
             
@@ -43,29 +53,67 @@ const StreakCalendar = ({ habits = [], refreshKey = 0 }) => {
           });
           
           // Build streak data for each calendar day
+          const todayKey = format(today, 'yyyy-MM-dd');
+          
           calendarDays.forEach(date => {
             const dateKey = format(date, 'yyyy-MM-dd');
             const logs = logsByDate[dateKey] || [];
-            const completedCount = logs.filter(log => log.completed).length;
             
-            data[dateKey] = {
-              completed: completedCount,
-              total: logs.length > 0 ? logs.length : (format(date, 'yyyy-MM-dd') === format(today, 'yyyy-MM-dd') ? habits.length : 0)
-            };
+            if (dateKey === todayKey) {
+              // Today: only count current active habits
+              const relevantLogs = logs.filter(log => currentHabitIds.has(log.habitId));
+              const completedCount = relevantLogs.filter(log => log.completed).length;
+              data[dateKey] = {
+                completed: completedCount,
+                total: habits.length
+              };
+            } else {
+              // Past days: show ALL historical data (including deleted habits)
+              const completedCount = logs.filter(log => log.completed).length;
+              const totalForDay = logs.length > 0 ? logs.length : 0;
+              data[dateKey] = {
+                completed: completedCount,
+                total: totalForDay
+              };
+            }
           });
         } catch (error) {
           console.error('Failed to load logs:', error);
-          // Fallback to empty data
+          const todayKey = format(today, 'yyyy-MM-dd');
           calendarDays.forEach(date => {
             const dateKey = format(date, 'yyyy-MM-dd');
             data[dateKey] = { 
               completed: 0, 
-              total: format(date, 'yyyy-MM-dd') === format(today, 'yyyy-MM-dd') ? habits.length : 0 
+              total: dateKey === todayKey ? habits.length : 0
             };
           });
         }
         
         setStreakData(data);
+        
+        // Calculate trend data for the chart from the same data
+        if (onDataCalculated) {
+          const todayDate = new Date(today);
+          todayDate.setHours(0, 0, 0, 0);
+          
+          const trendData = Object.entries(data)
+            .filter(([dateKey]) => {
+              const date = new Date(dateKey);
+              // Only include dates up to today in the current month
+              return date.getMonth() === today.getMonth() && 
+                     date.getFullYear() === today.getFullYear() &&
+                     date <= todayDate;
+            })
+            .map(([dateKey, dayData]) => ({
+              date: dateKey,
+              completions: dayData.completed,
+              totalLogs: dayData.total,
+              percentage: dayData.total > 0 ? Math.round((dayData.completed / dayData.total) * 100 * 10) / 10 : 0
+            }))
+            .sort((a, b) => new Date(a.date) - new Date(b.date));
+          
+          onDataCalculated(trendData);
+        }
       } catch (error) {
         console.error('Failed to load streak data:', error);
         setStreakData({});
@@ -75,7 +123,7 @@ const StreakCalendar = ({ habits = [], refreshKey = 0 }) => {
     };
 
     loadStreakData();
-  }, [habits, refreshKey]);
+  }, [refreshKey, habits.length]);
 
   const getIntensity = (date) => {
     const dateKey = format(date, 'yyyy-MM-dd');

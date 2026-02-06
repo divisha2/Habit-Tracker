@@ -109,7 +109,8 @@ class ApiService {
   }
 
   async getLogs() {
-    return this.request('/logs');
+    // Add timestamp to prevent caching
+    return this.request(`/logs?t=${Date.now()}`);
   }
 
   // Stats API (for Recharts)
